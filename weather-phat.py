@@ -13,12 +13,6 @@ from font_fredoka_one import FredokaOne
 from inky import InkyPHAT
 from PIL import Image, ImageDraw, ImageFont
 
-"""
-This code runs on Python 3.10+, you will also need:
-    sudo apt install python3-lxml
-    sudo pip3 install geocoder requests font-fredoka-one
-"""
-
 # Speed development by disabling display, enable for production
 enable_display = True
 
