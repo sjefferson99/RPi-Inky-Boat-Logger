@@ -45,7 +45,7 @@ class weather_api:
         Get basic weather information for a specified location as of now
         Provide a lat and long in decimal format array with Latitudet in 0
         postion and Longitude in 1
-        e.g. latlong[50.90488206900005, -1.4043040479999718] for Southampton UK.
+        e.g. latlong[50.9048, -1.4043] for Southampton UK.
         Returns a dictionary of weather information with human readable key names - Nautical metric units.
         """
         weather = {}
