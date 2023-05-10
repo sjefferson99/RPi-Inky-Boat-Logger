@@ -4,7 +4,6 @@
 import glob
 import os
 import time
-import json
 from sys import exit
 import config
 from open_meteo import weather_api
@@ -15,6 +14,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 # Speed development by disabling display, enable for production
 enable_display = True
+
+offset_hours = config.offset_hours
 
 # Details to customise your weather display
 
@@ -61,21 +62,22 @@ icons = {}
 masks = {}
 
 # Get the weather data for the given location
-weather = weather_api(config.username, config.password)
+weather = weather_api()
 latlong = weather.get_latlong(config.city, config.countrycode)
-weatherdata = weather.get_weather(latlong)
+weatherdata = weather.get_weather(latlong, offset_hours)
 
 # Placeholder variables
 pressure = 0.0
-windspeed = 0.0
+wind_speed = 0.0
+wind_gusts = 0.0
+wind_direction = 0.0
 temperature = 0.0
 weather_icon = None
 
 if weatherdata:
-    pressure = weatherdata["pressure"]
-    pressure2 = pressure - 3
-    #temperature = weatherdata["temperature"]
-    wind_speed = weatherdata["wind_speed"]
+    #pressure = weatherdata["pressure"]
+    temperature = weatherdata["temperature"]
+    #wind_speed = weatherdata["wind_speed"]
     weathercode = weatherdata["weather_icon"]
 
 else:
@@ -108,16 +110,16 @@ draw.line(((inky_display.resolution[0] / 2), 2, (inky_display.resolution[0] / 2)
 
 # Write text with weather values to the canvas
 datetime = time.strftime("%d/%m %H:%M")
-time2 = time.time() - 3*60*60
+time2 = time.time() - offset_hours*60*60
 datetime2 = time.strftime("%d/%m %H:%M", time.localtime(time2))
 
 draw.text((0, 0), datetime, inky_display.BLACK, font=bigfont)
 
 # draw.text((72, 34), "T", inky_display.WHITE, font=font)
-draw.text((0, 17), "{} HPa".format(pressure), inky_display.RED, font=bigfont)
-draw.text((0, 34), "{} HPa".format(pressure), inky_display.BLACK, font=littlefont)
+draw.text((0, 17), "{} C".format(temperature), inky_display.RED, font=bigfont)
+#draw.text((0, 34), "{} hPa".format(pressure), inky_display.BLACK, font=littlefont)
 # draw.text((92, 34), "{}°C".format(temperature), inky_display.WHITE, font=font)
-draw.text((0, 47), "{} kts".format(wind_speed), inky_display.RED, font=bigfont)
+#draw.text((0, 47), "{} kts".format(wind_speed), inky_display.RED, font=bigfont)
 draw.text((0, 64), "{}N, {}E".format(round(latlong[0], 4), round(latlong[1], 4)), inky_display.BLACK, font=littlefont)
 draw.text((((inky_display.resolution[0] / 2) + 5), 0), datetime2, inky_display.RED, font=bigfont)
 

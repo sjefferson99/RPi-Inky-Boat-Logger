@@ -2,8 +2,8 @@
 This module was written on python v3.11.3
 """
 
-import config
 import json
+import time
 
 try:
     import geocoder
@@ -17,30 +17,12 @@ except ImportError:
 
 class weather_api:
     """
-    Class for interacting with the Open_meteo API, this assume you have a free
-    account and you will need to pass your credentials to instantiate.
+    Class for interacting with the Open_Meteo API
     """
     def __init__(self, username: str, password: str) -> None:
-        self.username = username
-        self.password = password
-        
-        self.get_auth_token(username, password)
-
         return
 
-    def get_auth_token(self, username: str, password: str) -> int:
-        """Use your Open Meteo login to obtain an API token"""
-        response = requests.get('https://login.meteomatics.com/api/v1/token', auth=(username, password))
-        response.close()
-        if response.status_code == 200:
-            self.auth_token = response.json()["access_token"]
-            print("Auth token:", self.auth_token)
-            return 1
-        else:
-            print("Error generating auth token, check credentials provided")
-            return 0
-
-    def get_weather(self, latlong: list) -> dict:
+    def get_weather(self, latlong: list, offset_hours: int) -> dict:
         """
         Get basic weather information for a specified location as of now
         Provide a lat and long in decimal format array with Latitudet in 0
@@ -49,9 +31,9 @@ class weather_api:
         Returns a dictionary of weather information with human readable key names - Nautical metric units.
         """
         weather = {}
-        baseurl = "https://api.meteomatics.com/now/"
-        parameters = "msl_pressure:hPa,wind_speed_10m:kn,wind_dir_10m:d,wind_gusts_10m_1h:kn,weather_symbol_1h:idx/"
-        url = baseurl + parameters + str(latlong[0]) + "," + str(latlong[1]) +"/json?access_token=" + self.auth_token
+        baseurl = "https://api.open-meteo.com/v1/forecast?latitude={}}&longitude={}".format(latlong[0], latlong[1])
+        parameters = "&hourly=temperature_2m,dewpoint_2m,weathercode,pressure_msl,windspeed_10m,winddirection_10m,windgusts_10m&current_weather=true&past_days=1&forecast_days=1&windspeed_unit=kn&timezone=GB&timeformat=unixtime"
+        url = baseurl + parameters
         print(url)
 
         response = requests.get(url)
@@ -59,88 +41,50 @@ class weather_api:
         print("response data:", response.text)
         print("response code:", response.status_code)
 
-        if response.status_code == 403:
-            print("Renewing auth token")
-            self.get_auth_token(config.username, config.password)
-            response = requests.get(url)
-            response.close()
-
         if response.status_code == 200:
-            weather = self.process_weather(json.loads(response.text))
+            weather = self.process_weather(json.loads(response.text), offset_hours)
         else:
             print("Failure to get weather data.\nStatus code: {}\nResponse text: {}".format(response.status_code, response.text))
 
         return weather
 
-    def process_weather(self, response_text_json: json) -> dict:
+    def process_weather(self, response_text_json: json, offset_hours: int) -> dict:
         """
         Pass JSON encoded response text from the Open Meteo API
-        Assumes you have used one location and one time parameter, not a range
-        
-        This function requires python v2.10+
 
         Supports the following parameters:
-        "msl_pressure:hPa"
-        "wind_speed_10m:kn"
-        "wind_dir_10m:d"
-        "wind_gusts_10m_1h:kn"
-        "weather_symbol_1h:idx"
+        
         """
         weather = {}
-        data = response_text_json["data"]
+        data = response_text_json["hourly"]
         print("JSON data:", data, "\n")
+        hour = time.localtime()["tm_hour"]
+        current_hour = hour + 24
+        offset_hour = current_hour - offset_hours
         
         #Weather codes from: https://www.meteomatics.com/en/api/available-parameters/derived-weather-and-convenience-parameters/general-weather-state/#weather_symb
         icon_map = {
-            "Indeterminate": [0,100],
-            "Clear sky": [1,101],
-            "Light clouds": [2,102],
-            "Partly cloudy": [3,103],
-            "Cloudy": [4,104],
-            "Rain": [5,105],
-            "Rain and snow / sleet": [6,106],
-            "Snow": [7,107],
-            "Rain shower": [8,108],
-            "Snow shower": [9,109],
-            "Sleet shower": [10,110],
-            "Light Fog": [11,111],
-            "Dense fog": [12,112],
-            "Freezing rain": [13,113],
-            "Thunderstorms": [14,114],
-            "Drizzle": [15,115],
-            "Sandstorm": [16,116]
+            "snow": [71, 73, 75, 77, 85, 86],
+            "rain": [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82],
+            "cloud": [1, 2, 3, 45, 48],
+            "sun": [0],
+            "storm": [95, 96, 99],
+            "wind": []
         }
         
-        for item in data:
-            print("Item:", item, "\n")
-            # Assumes only one coordinate set and date per item
-            if item["parameter"] == "msl_pressure:hPa":
-                weather["pressure"] = item["coordinates"][0]["dates"][0]["value"]
-            elif item["parameter"] == "wind_speed_10m:kn":
-                weather["wind_speed"] = item["coordinates"][0]["dates"][0]["value"]
-            elif item["parameter"] == "wind_dir_10m:d":
-                weather["wind_direction"] = item["coordinates"][0]["dates"][0]["value"]
-            elif item["parameter"] == "wind_gusts_10m_1h:kn":
-                weather["wind_gusts"] = item["coordinates"][0]["dates"][0]["value"]
-            elif item["parameter"] == "weather_symbol_1h:idx":
-                weather["weather_code"] = item["coordinates"][0]["dates"][0]["value"]
+        weather["temperature"] = data["temperature_2m"][current_hour]
+        weather["offset_temperature"] = data["temperature_2m"][offset_hour]
+        weather["weather_code"] = data["weathercode"][current_hour]
+        weather["offset_weather_code"] = data["weathercode"][offset_hour]
 
-            # Needs python 3.10+
-            # match item["parameter"]:
-            #     case "msl_pressure:hPa":
-            #         weather["pressure"] = item["coordinates"][0]["dates"][0]["value"]
-            #     case "wind_speed_10m:kn":
-            #         weather["wind_speed"] = item["coordinates"][0]["dates"][0]["value"]
-            #     case "wind_dir_10m:d":
-            #         weather["wind_direction"] = item["coordinates"][0]["dates"][0]["value"]
-            #     case "wind_gusts_10m_1h:kn":
-            #         weather["wind_gusts"] = item["coordinates"][0]["dates"][0]["value"]
-            #     case "weather_symbol_1h:idx":
-            #         weather["weather_code"] = item["coordinates"][0]["dates"][0]["value"]
-            
         for icon in icon_map:
             if weather["weather_code"] in icon_map[icon]:
                 weather["weather_icon"] = icon
+                break
+        
+        for icon in icon_map:
+            if weather["offset_weather_code"] in icon_map[icon]:
+                weather["offset_weather_icon"] = icon
                 break
         
         for parameter in weather:
