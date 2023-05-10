@@ -74,8 +74,18 @@ class weather_api:
         
         weather["temperature"] = data["temperature_2m"][current_hour]
         weather["offset_temperature"] = data["temperature_2m"][offset_hour]
+        weather["dewpoint"] = data["dewpoint_2m"][current_hour]
+        weather["offset_dewpoint"] = data["dewpoint_2m"][offset_hour]
         weather["weather_code"] = data["weathercode"][current_hour]
         weather["offset_weather_code"] = data["weathercode"][offset_hour]
+        weather["pressure"] = data["pressure_msl"][current_hour]
+        weather["offset_pressure"] = data["pressure_msl"][offset_hour]
+        weather["wind_speed"] = data["windspeed_10m"][current_hour]
+        weather["offset_wind_speed"] = data["windspeed_10m"][offset_hour]
+        weather["wind_direction"] = data["winddirection_10m"][current_hour]
+        weather["offset_wind_direction"] = data["winddirection_10m"][offset_hour]
+        weather["wind_gusts"] = data["windgusts_10m"][current_hour]
+        weather["offset_wind_gusts"] = data["windgusts_10m"][offset_hour]
 
         for icon in icon_map:
             if weather["weather_code"] in icon_map[icon]:
