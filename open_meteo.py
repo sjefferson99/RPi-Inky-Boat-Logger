@@ -1,5 +1,5 @@
 """
-This module was written on python v3.11.3
+This module was written on python v3.9.2
 """
 
 import json
@@ -19,7 +19,7 @@ class weather_api:
     """
     Class for interacting with the Open_Meteo API
     """
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self) -> None:
         return
 
     def get_weather(self, latlong: list, offset_hours: int) -> dict:
@@ -31,7 +31,7 @@ class weather_api:
         Returns a dictionary of weather information with human readable key names - Nautical metric units.
         """
         weather = {}
-        baseurl = "https://api.open-meteo.com/v1/forecast?latitude={}}&longitude={}".format(latlong[0], latlong[1])
+        baseurl = "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}".format(latlong[0], latlong[1])
         parameters = "&hourly=temperature_2m,dewpoint_2m,weathercode,pressure_msl,windspeed_10m,winddirection_10m,windgusts_10m&current_weather=true&past_days=1&forecast_days=1&windspeed_unit=kn&timezone=GB&timeformat=unixtime"
         url = baseurl + parameters
         print(url)
@@ -58,7 +58,7 @@ class weather_api:
         weather = {}
         data = response_text_json["hourly"]
         print("JSON data:", data, "\n")
-        hour = time.localtime()["tm_hour"]
+        hour = time.localtime()[3]
         current_hour = hour + 24
         offset_hour = current_hour - offset_hours
         
@@ -92,12 +92,14 @@ class weather_api:
         
         return weather
     
-    def get_latlong(self, city: str, countrycode: str) -> list:
+    def get_latlong(self, city: str, countrycode: str, precision: int = 4) -> list:
         """
         Pass a city and country code to get a lat long for weather lookups
         """
         location_string = "{}, {}".format(city, countrycode)
         g = geocoder.arcgis(location_string)
         latlong = g.latlng
+        latlong[0] = round(latlong[0], precision)
+        latlong[1] = round(latlong[1], precision)
         print("Lat/long:",latlong[0], latlong[1])
         return latlong
