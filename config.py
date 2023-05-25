@@ -1,9 +1,6 @@
 inky = "phat"
 inky_colour = "red"
 
-username = "na_jefferson"
-password = "841ibcUFBb"
-
 city = "southampton"
 countrycode = "GB"
 
