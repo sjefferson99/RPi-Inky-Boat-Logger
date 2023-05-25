@@ -9,6 +9,7 @@ import config
 from open_meteo import weather_api
 from inky import InkyPHAT
 from PIL import Image, ImageDraw, ImageFont
+from nmea import tcp_nmea
 
 # Speed development by disabling display, enable for production
 enable_display = True
@@ -27,6 +28,9 @@ except TypeError:
 if inky_display.resolution not in ((212, 104), (250, 122)):
     w, h = inky_display.resolution
     raise RuntimeError("This example does not support {}x{}".format(w, h))
+
+#Set up NMEA connection
+nmea = tcp_nmea(config.nmea_host, config.nmea_port)
 
 def create_mask(source, mask=(inky_display.WHITE, inky_display.BLACK, inky_display.RED)):
     """Create a transparency mask.
@@ -75,10 +79,13 @@ littlefont = ImageFont.truetype("EdenMills.ttf", 12)
 # Draw line to separate the weather data
 draw.line(((inky_display.resolution[0] / 2), 2, (inky_display.resolution[0] / 2), inky_display.resolution[1] - 2), inky_display.RED) # Centre division
 
+# Get NMEA data
+nmea_time = nmea.get_nmea_datetime()
+
 # Write text with weather values to the canvas
-datetime = time.strftime("%d/%m %H:%M")
-time2 = time.time() - offset_hours*60*60
-datetime2 = time.strftime("%d/%m %H:%M", time.localtime(time2))
+datetime = time.strftime("%d/%m %H:%M", time.localtime(nmea_time))
+offset_time = nmea_time - offset_hours*60*60
+datetime2 = time.strftime("%d/%m %H:%M", time.localtime(offset_time))
 
 draw.text((0, 0), datetime, inky_display.BLACK, font=bigfont)
 draw.text((0, 15), "{} C".format(weatherdata["temperature"]), inky_display.BLACK, font=littlefont)
