@@ -73,8 +73,10 @@ for icon in glob.glob(os.path.join(PATH, "resources/icon-*.png")):
    masks[icon_name] = create_mask(icon_image)
 
 # https://webpagepublicity.com/free-fonts-e.html#FreeFonts
-bigfont = ImageFont.truetype("EdenMills.ttf", 14)
-littlefont = ImageFont.truetype("EdenMills.ttf", 12)
+bigfont = ImageFont.load_default()
+# bigfont = ImageFont.truetype("facet.ttf", 14)
+littlefont = ImageFont.load_default()
+# littlefont = ImageFont.truetype("facet.ttf", 12)
 
 # Draw line to separate the weather data
 draw.line(((inky_display.resolution[0] / 2), 2, (inky_display.resolution[0] / 2), inky_display.resolution[1] - 2), inky_display.RED) # Centre division
@@ -94,7 +96,7 @@ draw.text((0, 41), "{} kts".format(weatherdata["wind_speed"]), inky_display.BLAC
 draw.text((0, 54), "{} kts Gust".format(weatherdata["wind_gusts"]), inky_display.BLACK, font=littlefont)
 draw.text((0, 67), "{} Deg".format(weatherdata["wind_direction"]), inky_display.BLACK, font=littlefont)
 draw.text((0, 80), "{} C Dew".format(weatherdata["dewpoint"]), inky_display.BLACK, font=littlefont)
-draw.text((0, 93), "{}N, {}E".format(latlong[0], latlong[1]), inky_display.BLACK, font=littlefont)
+draw.text((0, 93), "{}N,{}E".format(latlong[0], latlong[1]), inky_display.BLACK, font=littlefont)
 img.paste(icons[weatherdata["weather_icon"]], (55, 10), masks[weatherdata["weather_icon"]])
 
 draw.text((((inky_display.resolution[0] / 2) + 5), 0), datetime2, inky_display.RED, font=bigfont)
