@@ -82,7 +82,7 @@ littlefont = ImageFont.load_default()
 draw.line(((inky_display.resolution[0] / 2), 2, (inky_display.resolution[0] / 2), inky_display.resolution[1] - 2), inky_display.RED) # Centre division
 
 # Get NMEA data
-nmea_time = nmea.get_nmea_datetime()
+nmea_time = nmea.get_datetime()
 
 # Write text with weather values to the canvas
 datetime = time.strftime("%d/%m %H:%M", time.localtime(nmea_time))

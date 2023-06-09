@@ -1,5 +1,6 @@
 import telnetlib
 import time
+import re
 
 class tcp_nmea:
     """
@@ -7,11 +8,35 @@ class tcp_nmea:
     """
     def __init__(self, host: str, port: int) -> None:
         self.tn = telnetlib.Telnet(host, port)
+        self.transducer_types = {
+            "A":"Angular displacement",
+            "C":"Temperature",
+            "D":"Depth",
+            "F":"Frequency",
+            "H":"Humidity",
+            "N":"Force",
+            "P":"Pressure",
+            "R":"Flow"
+        }
+        self.units = {
+            "A ":" Amperes",
+            "B ":" Bars",
+            "C ":" Celsius",
+            "D ":" Degrees",
+            "H ":" Hertz",
+            "I ":" Liters/second",
+            "K ":" Kelvin",
+            "M ":" Meters",
+            "N ":" Newton",
+            "P ":" Percentage of full range",
+            "R ":" RPM",
+            "S ":" Parts per thousand",
+            "V ":" Volts"
+        }
 
     def get_nmea_sentence_words(self, id: str) -> list:
         """
         Scan for specific sentence id (e.g. "$GPRMC") and return comma separated list of sentence words including null values
-        Note this is a lazy implementation and may return parts of the next sentence as further list items
         """
         sentence_id = id + ","
         sentence_id = sentence_id.encode('ascii')
@@ -21,12 +46,21 @@ class tcp_nmea:
         sentence = ""
         while "\n" not in sentence:
             sentence += self.tn.read_some().decode('ascii')
-
-        words = sentence.split(",")
+        
+        words = re.split(',|\*', sentence) # Split on comma and * for checksum
+        
+        # Trim off any extra data captured from next sentence
+        i = 0
+        for word in words:
+            if "$" in word:
+                break
+            i += 1
+            
+        words = words[:i]        
 
         return words
 
-    def get_nmea_datetime(self) -> time:
+    def get_datetime(self) -> time:
         """
         Extract time from recommended minimum specific GPS/Transit data ($GPRMC) and return in unix timestamp format
         """
@@ -42,3 +76,35 @@ class tcp_nmea:
         gps_timestamp = time.mktime(gps_structtime)
 
         return gps_timestamp
+    
+    def get_transducer_data(self) -> dict:
+        """
+        Find transducer sentence and extract all items, return a list of readings
+        using transducer types and units where valid (get_transducer_types, get_units)
+        """
+        weather_data = self.get_nmea_sentence_words("$YXXDR")
+        
+        weather_readings = {}
+        while len(weather_data) >= 4:
+            
+            if weather_data[0] in self.transducer_types:
+                weather_data[0] = self.transducer_types[weather_data[0]]
+            if weather_data[2] in self.units:
+                weather_data[2] = self.units[weather_data[2]]
+
+            weather_readings[weather_data[0]] = {"value" : weather_data[1], "unit" : weather_data[2], "label" : weather_data[3], "timestamp" : time.time()}
+            weather_data = weather_data[4:]
+
+        return weather_readings
+    
+    def get_transducer_types(self) -> dict:
+        """
+        Return valid transducer types
+        """
+        return self.transducer_types
+    
+    def get_units(self) -> dict:
+        """
+        Return valid units
+        """
+        return self.units
