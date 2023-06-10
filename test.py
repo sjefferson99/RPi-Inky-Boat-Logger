@@ -1,6 +1,6 @@
 from nmea import tcp_nmea
 
-print("Instantiating NMEA")
+print("Instantiating weather NMEA")
 wnmea = tcp_nmea("192.168.68.201", 2000)
 
 print("Retrieving transducer data")

@@ -29,9 +29,31 @@ if inky_display.resolution not in ((212, 104), (250, 122)):
     w, h = inky_display.resolution
     raise RuntimeError("This example does not support {}x{}".format(w, h))
 
-#Set up NMEA connection
-nmea = tcp_nmea(config.nmea_host, config.nmea_port)
+#Attempt online weather setup
+online_weather = weather_api()
+if config.city != False and config.countrycode != False:
+    default_lat_long = online_weather.get_latlong(config.city, config.countrycode)
+else:
+    default_lat_long = False
 
+# Set up NMEA connections
+# If both arguments are not false, configure, if any match an existing config, redirect to prevent connecting twice
+if config.gps_nmea_host and config.gps_nmea_port:
+    gps_nmea = tcp_nmea(config.gps_nmea_host, config.gps_nmea_port)
+if config.weather_nmea_host and config.weather_nmea_port:
+    if config.weather_nmea_host == config.gps_nmea_host and config.weather_nmea_port == config.gps_nmea_port:
+        weather_nmea = gps_nmea
+    else:            
+        weather_nmea = tcp_nmea(config.weather_nmea_host, config.weather_nmea_port)
+if config.wind_nmea_host and config.wind_nmea_port:
+    if config.wind_nmea_host == config.gps_nmea_host and config.wind_nmea_port == config.gps_nmea_port:
+        wind_nmea = gps_nmea
+    elif config.wind_nmea_host == config.weather_nmea_host and config.wind_nmea_port == config.weather_nmea_port:
+        wind_nmea = weather_nmea
+    else:
+        wind_nmea = tcp_nmea(config.wind_nmea_host, config.wind_nmea_port)
+    
+    
 def create_mask(source, mask=(inky_display.WHITE, inky_display.BLACK, inky_display.RED)):
     """Create a transparency mask.
 
@@ -57,9 +79,46 @@ icons = {}
 masks = {}
 
 # Get the weather data for the given location
-weather = weather_api()
-latlong = weather.get_latlong(config.city, config.countrycode)
-weatherdata = weather.get_weather(latlong, offset_hours)
+def cardinal_to_signed_lat_long(cardinal_lat_long: dict) -> list:
+    """
+    Convert dictionary of lat long with N/S E/W designation to list of lat long signed floats
+    """
+    
+    lat_long = []
+    if cardinal_lat_long["ns"] = "s":
+        lat_long.append(cardinal_lat_long["lat"] * -1)
+    else:
+        lat_long.append(cardinal_lat_long["lat"])
+    if cardinal_lat_long["ew"] = "w":
+        lat_long.append(cardinal_lat_long["long"] * -1)
+    else:
+        lat_long.append(cardinal_lat_long["long"])
+    
+    return lat_long
+
+def get_weather_data () -> dict:
+    # Determine most accurate time for reading
+    system_time = time.time()
+    reading_time = system_time
+    gps_time = gps_nmea.get_datetime()
+    if gps_time:
+        if mod(gps_time - system_time) > 120:
+            print("System time differs from GPS time by more than 2 minutes, using GPS time")
+            reading_time = gps_time    
+    
+    # Determine most accurate lat/long for reading
+    gps_lat_long = gps_nmea.get_lat_long()
+    if "e" in gps_lat_long:
+        lat_long = default_lat_long
+    else:
+        lat_long = convert_to_signed_lat_long(gps_lat_long)
+
+    # Get weather transducer readings if present
+    local_weather = weather_nmea.get_transducer_data()
+    local_wind = wind_nmea.get_wind_data()
+    if !local_weather or !local_wind:
+        net_weather = weather.get_weather(latlong, offset_hours)
+        
 
 # Create a new canvas to draw on
 img = Image.new("P", (inky_display.resolution))
@@ -81,8 +140,8 @@ littlefont = ImageFont.load_default()
 # Draw line to separate the weather data
 draw.line(((inky_display.resolution[0] / 2), 2, (inky_display.resolution[0] / 2), inky_display.resolution[1] - 2), inky_display.RED) # Centre division
 
-# Get NMEA data
-nmea_time = nmea.get_datetime()
+# get nmea_time
+nmea_time = gps_nmea.get_datetime()
 
 # Write text with weather values to the canvas
 datetime = time.strftime("%d/%m %H:%M", time.localtime(nmea_time))

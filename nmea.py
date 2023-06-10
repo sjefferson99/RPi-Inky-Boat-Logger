@@ -66,17 +66,39 @@ class tcp_nmea:
         """
         gps_words = self.get_nmea_sentence_words("$GPRMC")
         
-        gps_date = gps_words[8][:-2] # extract year
-        gps_year = int(gps_words[8][-2:]) + 2000 # convert to 4 digit year
-        gps_longdate = gps_date + str(gps_year) # insert 4 digit year
-        gps_time = gps_words[0]
-        gps_date_time = gps_longdate + " " + gps_time
+        if gps_words:
+            gps_date = gps_words[8][:-2] # extract year
+            gps_year = int(gps_words[8][-2:]) + 2000 # convert to 4 digit year
+            gps_longdate = gps_date + str(gps_year) # insert 4 digit year
+            gps_time = gps_words[0]
+            gps_date_time = gps_longdate + " " + gps_time
 
-        gps_structtime = time.strptime(gps_date_time[:-3], "%d%m%Y %H%M%S")
-        gps_timestamp = time.mktime(gps_structtime)
+            gps_structtime = time.strptime(gps_date_time[:-3], "%d%m%Y %H%M%S")
+            gps_timestamp = time.mktime(gps_structtime)
+        
+        else:
+            gps_timestamp = 0
 
         return gps_timestamp
     
+    def get_lat_long(self) -> dict:
+        """
+        Extract lat/long from recommended minimum specific GPS/Transit data ($GPRMC) and return as a list
+        """
+        lat_long = {}
+        gps_words = self.get_nmea_sentence_words("$GPRMC")
+        
+        if gps_words:
+            lat_long["lat"] = gps_words[2]
+            lat_long["lns"] = gps_words[3]
+            lat_long["long"] = gps_words[4]
+            lat_long["ew"] = gps_words[5]
+
+        else:
+            lat_long["e"] = "No result"
+        
+        return lat_long
+            
     def get_transducer_data(self) -> dict:
         """
         Find transducer sentence and extract all items, return a list of readings
@@ -92,8 +114,9 @@ class tcp_nmea:
             if weather_data[2] in self.units:
                 weather_data[2] = self.units[weather_data[2]]
 
-            weather_readings[weather_data[0]] = {"value" : weather_data[1], "unit" : weather_data[2], "label" : weather_data[3], "timestamp" : time.time()}
+            weather_readings[weather_data[0]] = {"value" : weather_data[1], "unit" : weather_data[2], "label" : weather_data[3]}
             weather_data = weather_data[4:]
+            weather_readings["timestamp"] = time.time()      
 
         return weather_readings
     

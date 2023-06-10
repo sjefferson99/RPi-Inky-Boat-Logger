@@ -24,8 +24,8 @@ class weather_api:
 
     def get_weather(self, latlong: list, offset_hours: int) -> dict:
         """
-        Get basic weather information for a specified location as of now
-        Provide a lat and long in decimal format array with Latitudet in 0
+        Get basic weather information for a specified location as of now and offset_hours in the past to a maximum of 24
+        Provide a lat and long in decimal format array with Lattitude in 0
         postion and Longitude in 1
         e.g. latlong[50.9048, -1.4043] for Southampton UK.
         Returns a dictionary of weather information with human readable key names - Nautical metric units.
