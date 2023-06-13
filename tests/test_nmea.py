@@ -54,7 +54,7 @@ def test_transducer_units():
 
 def test_date_time(mocker):
     output = ["124027.00","A","5053.00348","N","00118.21794","W","0.009","","110623","","","A","63"]
-    mock_run = mocker.patch( "nmea.tcp_nmea.get_nmea_sentence_words", return_value=output )
+    mocker.patch( "nmea.tcp_nmea.get_nmea_sentence_words", return_value=output )
     nmea = tcp_nmea()
     timestamp = nmea.get_datetime()
     assert timestamp == 1686483627.0

@@ -69,22 +69,11 @@ class tcp_nmea:
         sentence_id = id + ","
         sentence_id = sentence_id.encode('ascii')
 
-        self.tn.read_until(sentence_id)
+        self.tn.read_until(sentence_id).decode('ascii')
 
-        sentence = ""
-        while "\n" not in sentence:
-            sentence += self.tn.read_some().decode('ascii')
+        sentence = self.tn.read_until(b"\n").decode('ascii')
         
         words = re.split(',|\*', sentence) # Split on comma and * for checksum
-        
-        # Trim off any extra data captured from next sentence
-        i = 0
-        for word in words:
-            if "$" in word:
-                break
-            i += 1
-            
-        words = words[:i]        
 
         return words
 
