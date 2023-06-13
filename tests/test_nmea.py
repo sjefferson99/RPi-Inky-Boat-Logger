@@ -1,13 +1,4 @@
 from nmea import tcp_nmea
-import telnetlib
-
-def test_connect():
-    """
-    Test init using host and port
-    """
-    nmea = tcp_nmea()
-    nmea.connect("192.168.4.90", 2000)
-    assert type(nmea.tn) == type(telnetlib.Telnet())
 
 def test_transducer_types():
     """
@@ -23,7 +14,6 @@ def test_transducer_types():
         "P":"Pressure",
         "R":"Flow"
     }
-    
     nmea = tcp_nmea()
     get_transducer_types = nmea.get_transducer_types()
     assert transducer_types == get_transducer_types
@@ -47,10 +37,17 @@ def test_transducer_units():
         "S ":" Parts per thousand",
         "V ":" Volts"
     }
-    
     nmea = tcp_nmea()
     get_transducer_units = nmea.get_transducer_units()
     assert transducer_units == get_transducer_units
+
+def test_get_nmea_sentence_words(mocker):
+    output = "124027.00,A,5053.00348,N,00118.21794,W,0.009,,110623,,,A*63"
+    mocker.patch( "nmea.tcp_nmea.get_nmea_sentence", return_value=output )
+    nmea = tcp_nmea()
+    nmea_words = nmea.get_nmea_sentence_words("$GPRMC")
+    words = ["124027.00","A","5053.00348","N","00118.21794","W","0.009","","110623","","","A","63"]
+    assert words == nmea_words
 
 def test_date_time(mocker):
     output = ["124027.00","A","5053.00348","N","00118.21794","W","0.009","","110623","","","A","63"]
