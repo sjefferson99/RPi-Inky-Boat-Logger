@@ -69,9 +69,9 @@ class tcp_nmea:
         """
         return self.transducer_units
 
-    def get_nmea_sentence_words(self, id: str) -> list:
+    def get_nmea_sentence(self, id: str) -> list:
         """
-        Scan for specific sentence id (e.g. "$GPRMC") and return a comma separated list of sentence words including null values
+        Scan for specific sentence id (e.g. "$GPRMC") and return that line
         """
         sentence_id = id + ","
         sentence_id = sentence_id.encode('ascii')
@@ -79,6 +79,14 @@ class tcp_nmea:
         self.tn.read_until(sentence_id).decode('ascii')
 
         sentence = self.tn.read_until(b"\n").decode('ascii')
+
+        return sentence
+    
+    def get_nmea_sentence_words(self, id: str) -> list:
+        """
+        Request a sentence based on ID (e.g. "$GPRMC") and return a comma separated list of sentence words including null values
+        """
+        sentence = self.get_nmea_sentence(id)
         
         words = re.split(',|\*', sentence) # Split on comma and * for checksum
 
