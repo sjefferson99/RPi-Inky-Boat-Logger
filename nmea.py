@@ -1,13 +1,13 @@
 import telnetlib
 import time
 import re
+import config
 
 class tcp_nmea:
     """
     Connect to Telnet NMEA 0183 source over TCP and extract data
     """
-    def __init__(self, host: str, port: int) -> None:
-        self.tn = telnetlib.Telnet(host, port)
+    def __init__(self) -> None:
         self.transducer_types = {
             "A":"Angular displacement",
             "C":"Temperature",
@@ -18,7 +18,7 @@ class tcp_nmea:
             "P":"Pressure",
             "R":"Flow"
         }
-        self.units = {
+        self.transducer_units = {
             "A ":" Amperes",
             "B ":" Bars",
             "C ":" Celsius",
@@ -33,10 +33,38 @@ class tcp_nmea:
             "S ":" Parts per thousand",
             "V ":" Volts"
         }
+        self.wind_units = {
+            "N":"Knots",
+            "K": "km/h",
+            "M":"m/s"
+        }
+        self.st60_wind_units = {
+            "N":"km/h",
+            "K": "Knots",
+            "M":"m/s"
+        }
+
+        return None
+    
+    def connect(self, host: str, port: int) -> None:
+        self.tn = telnetlib.Telnet(host, port)
+        return None
+
+    def get_transducer_types(self) -> dict:
+        """
+        Return valid transducer types
+        """
+        return self.transducer_types
+    
+    def get_transducer_units(self) -> dict:
+        """
+        Return valid units
+        """
+        return self.transducer_units
 
     def get_nmea_sentence_words(self, id: str) -> list:
         """
-        Scan for specific sentence id (e.g. "$GPRMC") and return comma separated list of sentence words including null values
+        Scan for specific sentence id (e.g. "$GPRMC") and return a comma separated list of sentence words including null values
         """
         sentence_id = id + ","
         sentence_id = sentence_id.encode('ascii')
@@ -102,7 +130,7 @@ class tcp_nmea:
     def get_transducer_data(self) -> dict:
         """
         Find transducer sentence and extract all items, return a list of readings
-        using transducer types and units where valid (get_transducer_types, get_units)
+        using transducer types and units where valid (get_transducer_types, get_transducer_units)
         """
         weather_data = self.get_nmea_sentence_words("$YXXDR")
         
@@ -111,8 +139,8 @@ class tcp_nmea:
             
             if weather_data[0] in self.transducer_types:
                 weather_data[0] = self.transducer_types[weather_data[0]]
-            if weather_data[2] in self.units:
-                weather_data[2] = self.units[weather_data[2]]
+            if weather_data[2] in self.transducer_units:
+                weather_data[2] = self.transducer_units[weather_data[2]]
 
             weather_readings[weather_data[0]] = {"value" : weather_data[1], "unit" : weather_data[2], "label" : weather_data[3]}
             weather_data = weather_data[4:]
@@ -120,14 +148,24 @@ class tcp_nmea:
 
         return weather_readings
     
-    def get_transducer_types(self) -> dict:
+    def get_wind_data(self) -> dict:
         """
-        Return valid transducer types
+        Extract wind data from NMEA sentence $IIMWV
         """
-        return self.transducer_types
-    
-    def get_units(self) -> dict:
-        """
-        Return valid units
-        """
-        return self.units
+        wind_data = {}
+
+        wind_words = self.get_nmea_sentence_words("$IIMWV")
+
+        if wind_words:
+            wind_data["angle"] = wind_words[0]
+            wind_data["reference"] = wind_words[1]
+            wind_data["speed"] = wind_words[2]
+            if config.st60_fix == False:
+                wind_data["units"] = self.wind_units[wind_words[3]]
+            else:
+                wind_data["units"] = self.st60_wind_units[wind_words[3]]
+
+        return wind_data
+
+    def get_cog_sog_data(self) -> dict:
+        pass

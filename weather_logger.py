@@ -37,13 +37,15 @@ class weather_logger:
 
         # GPS NMEA
         if config.gps_nmea_host and config.gps_nmea_port:
-            self.gps_nmea = tcp_nmea(config.gps_nmea_host, config.gps_nmea_port)
+            self.gps_nmea = tcp_nmea()
+            self.gps_nmea.connect(config.gps_nmea_host, config.gps_nmea_port)
         # Weather NMEA
         if config.sensors_nmea_host and config.sensors_nmea_port:
             if config.sensors_nmea_host == config.gps_nmea_host and config.sensors_nmea_port == config.gps_nmea_port:
                 self.sensors_nmea = self.gps_nmea
             else:            
-                self.sensors_nmea = tcp_nmea(config.sensors_nmea_host, config.sensors_nmea_port)
+                self.sensors_nmea = tcp_nmea()
+                self.sensors_nmea.connect(config.sensors_nmea_host, config.sensors_nmea_port)
         # Wind NMEA
         if config.wind_nmea_host and config.wind_nmea_port:
             if config.wind_nmea_host == config.gps_nmea_host and config.wind_nmea_port == config.gps_nmea_port:
@@ -51,10 +53,17 @@ class weather_logger:
             elif config.wind_nmea_host == config.sensors_nmea_host and config.wind_nmea_port == config.sensors_nmea_port:
                 self.wind_nmea = self.sensors_nmea
             else:
-                self.wind_nmea = tcp_nmea(config.wind_nmea_host, config.wind_nmea_port)
+                self.wind_nmea = tcp_nmea()
+                self.wind_nmea.connect(config.wind_nmea_host, config.wind_nmea_port)
         
         return None
     
+    def ground_wind_from_apparent(self) -> list:
+        pass
+
+    def get_dew_point(self, temperature: float, humidity: int) -> float:
+        pass
+
     def cardinal_to_signed_lat_long(self, cardinal_lat_long: dict) -> list:
         """
         Convert dictionary of lat long with N/S E/W designation to list of lat long signed floats
@@ -75,7 +84,7 @@ class weather_logger:
         """
         Determine most accurate available time for reading
         """
-        system_time = time.time()
+        system_time = time()
         reading_time = system_time
         gps_time = self.gps_nmea.get_datetime()
         if gps_time:
@@ -92,7 +101,7 @@ class weather_logger:
         if "e" in gps_lat_long:
             lat_long = self.default_lat_long
         else:
-            lat_long = self.convert_to_signed_lat_long(gps_lat_long)
+            lat_long = self.cardinal_to_signed_lat_long(gps_lat_long)
         return lat_long
     
     def get_weather_readings(self, lat_long: list = []) -> dict:
@@ -100,27 +109,49 @@ class weather_logger:
         Get weather transducer readings if present, pass a lat/long for online lookup if enabled
         """
         weather_readings = {}
+        missing_data = False
         
         local_sensors = self.sensors_nmea.get_transducer_data()
         try:
             weather_readings["temperature"] = local_sensors["Temperature"]
         except:
             weather_readings["temperature"] = None
+            missing_data = True
         try:
             weather_readings["pressure"] = local_sensors["Pressure"]
         except:
             weather_readings["pressure"] = None
+            missing_data = True
         try:
             weather_readings["humidity"] = local_sensors["Humidity"]
         except:
             weather_readings["humidity"] = None
+            missing_data = True
+        
         local_wind = self.wind_nmea.get_wind_data()
-        if self.online_weather and lat_long:
+        if local_wind["reference"] == "R":
+            try:
+                local_wind["direction"] = local_sensors["wind_direction"]
+            except:
+                weather_readings["wind_direction"] = None
+                missing_data = True
+            try:
+                local_wind["speed"] = local_sensors["wind_speed"]
+            except:
+                weather_readings["wind_speed"] = None
+                missing_data = True
+        else:
+            weather_readings["wind_direction"] = None
+            weather_readings["wind_speed"] = None
+            missing_data = True
+
+        if self.online_weather and lat_long and missing_data == True:
             try:
                 net_weather = self.online_weather.get_weather(lat_long, self.offset_hours)
                 for reading in weather_readings:
                     if reading == None:
                         #get reading from net_weather
+                        print("Not actually looking up weather online right now - code arrives on Tuesday")
                         pass
             except:
                 print ("Online weather not enabled and available")
