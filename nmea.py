@@ -2,6 +2,7 @@ import telnetlib
 import time
 import re
 import config
+import socket
 
 class tcp_nmea:
     """
@@ -49,6 +50,12 @@ class tcp_nmea:
     def connect(self, host: str, port: int) -> None:
         self.tn = telnetlib.Telnet(host, port)
         return None
+    
+    def disconnect(self):
+        self.tn.get_socket().shutdown(socket.SHUT_WR)
+        data = self.tn.read_all()
+        self.tn.close()
+        return data
 
     def get_transducer_types(self) -> dict:
         """
