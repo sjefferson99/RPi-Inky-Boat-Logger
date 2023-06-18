@@ -115,14 +115,17 @@ class tcp_nmea:
     
     def get_lat_long(self) -> dict:
         """
-        Extract lat/long from recommended minimum specific GPS/Transit data ($GPRMC) and return as a list
+        Extract lat/long in degrees and decimal minutes, ddmm.mm N/S, dddmm.mm E/W from recommended minimum specific
+        GPS/Transit data ($GPRMC) and return as a dictionary.
+        >>>get_lat_long()
+        {"lat":"5053.00348", "ns":"N", "long":"00118.21794", "ew":"W"}
         """
         lat_long = {}
         gps_words = self.get_nmea_sentence_words("$GPRMC")
         
         if gps_words:
             lat_long["lat"] = gps_words[2]
-            lat_long["lns"] = gps_words[3]
+            lat_long["ns"] = gps_words[3]
             lat_long["long"] = gps_words[4]
             lat_long["ew"] = gps_words[5]
 
@@ -172,4 +175,13 @@ class tcp_nmea:
         return wind_data
 
     def get_cog_sog_data(self) -> dict:
-        pass
+        """
+        Extract COG True/SOG Knots data from NMEA sentence $GPVTG
+        """
+        cog_sog_data = {}
+
+        cog_sog_words = self.get_nmea_sentence_words("$GPVTG")
+        cog_sog_data["cog"] = cog_sog_words[1]
+        cog_sog_data["sog"] = cog_sog_words[5]
+        
+        return cog_sog_data
