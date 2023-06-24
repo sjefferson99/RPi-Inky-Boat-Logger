@@ -1,4 +1,5 @@
 """
+Open meteo classes for working weather data from the internet.
 This module was written on python v3.9.2
 """
 
