@@ -48,7 +48,7 @@ class tcp_nmea:
         return None
     
     def connect(self, host: str, port: int) -> None:
-        self.tn = telnetlib.Telnet(host, port)
+        self.tn = telnetlib.Telnet(host, port, 2)
         return None
     
     def disconnect(self):
