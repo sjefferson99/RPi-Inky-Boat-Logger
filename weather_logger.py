@@ -2,6 +2,8 @@ from nmea import tcp_nmea
 from open_meteo import weather_api
 import config
 from time import time
+from constants import *
+import math
 
 class weather_logger:
     """
@@ -20,10 +22,8 @@ class weather_logger:
     
     def set_default_lat_long(self) -> None:
         self.default_lat_long = []
-        if self.online_weather:
-            self.online_weather = weather_api()
-            if config.city != False and config.countrycode != False:
-                self.default_lat_long = self.online_weather.get_latlong(config.city, config.countrycode)
+        if self.online_weather and config.city != False and config.countrycode != False:
+            self.default_lat_long = self.online_weather.get_latlong(config.city, config.countrycode)
 
         return None
 
@@ -61,12 +61,56 @@ class weather_logger:
     def ground_wind_from_apparent(self) -> list:
         pass
 
-    def get_dew_point(self, temperature: float, humidity: int) -> float:
-        pass
+    # https://www.omnicalculator.com/physics/dew-point#how-to-calculate-dew-point-how-to-calculate-relative-humidity
+    def get_dew_point(self, temperature_in_c: float, relative_humidity: int) -> float:
+        alphatrh = (math.log((relative_humidity / 100))) + ((17.625 * temperature_in_c) / (243.04 + temperature_in_c))
+        dewpoint_in_c = (243.04 * alphatrh) / (17.625 - alphatrh)
+        return dewpoint_in_c
+
+    # https://www.calctool.org/atmospheric-thermodynamics/absolute-humidity#what-is-and-how-to-calculate-absolute-humidity
+    def relative_to_absolute_humidity(self, relative_humidity, temperature_in_c):
+        temperature_in_k = self.celcius_to_kelvin(temperature_in_c)
+        actual_vapor_pressure = self.get_actual_vapor_pressure(relative_humidity, temperature_in_k)
+
+        return actual_vapor_pressure / (WATER_VAPOR_SPECIFIC_GAS_CONSTANT * temperature_in_k)
+
+    def absolute_to_relative_humidity(self, absolute_humidity, temperature_in_c):
+        temperature_in_k = self.celcius_to_kelvin(temperature_in_c)
+        saturation_vapor_pressure = self.get_saturation_vapor_pressure(temperature_in_k)
+
+        return (WATER_VAPOR_SPECIFIC_GAS_CONSTANT * temperature_in_k * absolute_humidity) / saturation_vapor_pressure * 100
+
+    def celcius_to_kelvin(self, temperature_in_c):
+        return temperature_in_c + 273.15
+
+    # https://www.calctool.org/atmospheric-thermodynamics/absolute-humidity#actual-vapor-pressure
+    # http://cires1.colorado.edu/~voemel/vp.html
+    def get_actual_vapor_pressure(self, relative_humidity, temperature_in_k):
+        return self.get_saturation_vapor_pressure(temperature_in_k) * (relative_humidity / 100)
+
+    def get_saturation_vapor_pressure(self, temperature_in_k):
+        v = 1 - (temperature_in_k / CRITICAL_WATER_TEMPERATURE)
+
+        # empirical constants
+        a1 = -7.85951783
+        a2 = 1.84408259
+        a3 = -11.7866497
+        a4 = 22.6807411
+        a5 = -15.9618719
+        a6 = 1.80122502
+
+        return CRITICAL_WATER_PRESSURE * math.exp(
+            CRITICAL_WATER_TEMPERATURE /
+            temperature_in_k *
+            (a1*v + a2*v**1.5 + a3*v**3 + a4*v**3.5 + a5*v**4 + a6*v**7.5)
+        )
 
     def cardinal_to_signed_lat_long(self, cardinal_lat_long: dict) -> list:
         """
         Convert dictionary of lat long with N/S E/W designation to list of lat long signed floats
+        Example:
+        input: {"lat": 56.345, "ns": "n", "long": 1.045, "ew": "w"}
+        output: [56.345, -1.045]
         """
         lat_long = []
         if cardinal_lat_long["ns"] == "s":
@@ -82,7 +126,7 @@ class weather_logger:
 
     def get_reading_time(self) -> time:
         """
-        Determine most accurate available time for reading
+        Returns system time or returns GPS time if present and more than 120 seconds different
         """
         system_time = time()
         reading_time = system_time
