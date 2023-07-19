@@ -68,7 +68,7 @@ class weather_logger:
         Apparent wind direction is +/- 0-180 with - being port and + starboard)
         GPS direction is compass true heading
         Example:
-        ground_wind_from_apparent([123,4.2], [321.5, 5.9]) = [xxx.x, y.y]
+        ground_wind_from_apparent([-160,40], [20, 15]) = [214.6, 54.3]
         """
         
         # Formula from here: https://seamankowts.net/how-to-calculate-true-wind-direction-and-true-wind-speed
