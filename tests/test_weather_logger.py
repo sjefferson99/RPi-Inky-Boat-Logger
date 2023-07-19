@@ -151,3 +151,41 @@ def test_cardinal_to_signed_lat_long():
 #     now = time.time()
 #     reading_time = wl.get_reading_time()
 #     assert now == reading_time
+
+def test_ground_wind_from_stbd_apparent():
+    """
+    Correct true wind vector from apparent wind vector
+    """
+    config.gps_nmea_host = None
+    config.gps_nmea_port = None
+    config.wind_nmea_host = None
+    config.wind_nmea_port = None
+    config.sensors_nmea_host = None
+    config.sensors_nmea_port = None
+    config.use_online_weather = True
+    wl = weather_logger()
+
+    apparent_vector = [50, 10]
+    gps_vector = [88, 4]
+    ground_vector = [160.4, 8.0]
+    calculated_ground_vector = wl.ground_wind_from_apparent(apparent_vector, gps_vector)
+    assert ground_vector == calculated_ground_vector
+
+def test_ground_wind_from_port_apparent():
+    """
+    Correct true wind vector from apparent wind vector
+    """
+    config.gps_nmea_host = None
+    config.gps_nmea_port = None
+    config.wind_nmea_host = None
+    config.wind_nmea_port = None
+    config.sensors_nmea_host = None
+    config.sensors_nmea_port = None
+    config.use_online_weather = True
+    wl = weather_logger()
+
+    apparent_vector = [-160, 40]
+    gps_vector = [20, 15]
+    ground_vector = [214.6, 54.3]
+    calculated_ground_vector = wl.ground_wind_from_apparent(apparent_vector, gps_vector)
+    assert ground_vector == calculated_ground_vector

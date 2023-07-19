@@ -3,7 +3,7 @@ from open_meteo import weather_api
 import config
 from time import time
 from constants import *
-import math
+from math import log, exp, sqrt, cos, acos, degrees, radians
 
 class weather_logger:
     """
@@ -58,12 +58,43 @@ class weather_logger:
         
         return None
     
-    def ground_wind_from_apparent(self) -> list:
-        pass
+    def ground_wind_from_apparent(self, apparent_vector: list, gps_vector:list) -> list:
+        """
+        Return a ground wind vector given the apparent wind angle
+        (apparent_vector) and gps speed over ground and course over ground
+        (gps_vector).
+        Vectors are in format [degrees, speed] where all vector speeds should
+        match units.
+        Apparent wind direction is +/- 0-180 with - being port and + starboard)
+        GPS direction is compass true heading
+        Example:
+        ground_wind_from_apparent([123,4.2], [321.5, 5.9]) = [xxx.x, y.y]
+        """
+        
+        # Formula from here: https://seamankowts.net/how-to-calculate-true-wind-direction-and-true-wind-speed
+        
+        if apparent_vector[0] < 0:
+            ground_modifier = -1
+        else:
+            ground_modifier = 1
+        
+        apparent_vector[0] = radians(apparent_vector[0])
+        
+        true_speed = sqrt((gps_vector[1]**2) + (apparent_vector[1]**2) - (2 * gps_vector[1] * apparent_vector[1] * cos(apparent_vector[0])))
+
+        true_direction = degrees(acos((true_speed**2 + gps_vector[1]**2 - apparent_vector[1]**2) / (2 * true_speed * gps_vector[1])))
+        print(true_direction)
+
+        if apparent_vector[0] < 0:
+            ground_direction = 360 - (180 - true_direction - gps_vector[0])
+        else:
+            ground_direction = 180 - true_direction + gps_vector[0]
+
+        return [round(ground_direction, 1), round(true_speed, 1)]
 
     # https://www.omnicalculator.com/physics/dew-point#how-to-calculate-dew-point-how-to-calculate-relative-humidity
     def get_dew_point(self, temperature_in_c: float, relative_humidity: int) -> float:
-        alphatrh = (math.log((relative_humidity / 100))) + ((17.625 * temperature_in_c) / (243.04 + temperature_in_c))
+        alphatrh = (log((relative_humidity / 100))) + ((17.625 * temperature_in_c) / (243.04 + temperature_in_c))
         dewpoint_in_c = (243.04 * alphatrh) / (17.625 - alphatrh)
         return dewpoint_in_c
 
@@ -99,7 +130,7 @@ class weather_logger:
         a5 = -15.9618719
         a6 = 1.80122502
 
-        return CRITICAL_WATER_PRESSURE * math.exp(
+        return CRITICAL_WATER_PRESSURE * exp(
             CRITICAL_WATER_TEMPERATURE /
             temperature_in_k *
             (a1*v + a2*v**1.5 + a3*v**3 + a4*v**3.5 + a5*v**4 + a6*v**7.5)
